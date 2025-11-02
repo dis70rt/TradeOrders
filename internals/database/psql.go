@@ -10,7 +10,7 @@ import (
 	log "github.com/dis70rt/TradeOrders/internals/logger"
 )
 
-func Connect() (*sql.DB) {
+func ConnectPostgres() (*sql.DB) {
 	_ = godotenv.Load()
 	user := os.Getenv("POSTGRES_USER")
 	password := os.Getenv("POSTGRES_PASSWORD")

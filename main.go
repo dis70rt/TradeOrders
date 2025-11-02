@@ -6,8 +6,11 @@ import (
 )
 
 func main() {
-	db := database.Connect()
+	db := database.ConnectPostgres()
 	defer db.Close()
 
-	routes.SetupRoutes(db).Run(":8080")
+	rdb := database.ConnectRedis()
+	defer rdb.Close()
+
+	routes.SetupRoutes(db, rdb).Run(":8080")
 }
