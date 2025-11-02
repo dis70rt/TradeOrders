@@ -22,3 +22,7 @@ func (s *Service) CreateOrder(ctx context.Context, order *OrderRequest) (string,
 	}
 	return s.repo.CreateOrder(ctx, order)
 }
+
+func (s *Service) GetOrders(ctx context.Context, limit, page int) ([]Order, error) {
+	return s.repo.GetOrders(ctx, limit, page)
+}	
