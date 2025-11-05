@@ -3,11 +3,13 @@ package orders
 import (
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Order struct {
-	ID         string    `json:"id"`
-	ClientID   string    `json:"client_id"`
+	ID         uuid.UUID    `json:"id"`
+	ClientID   uuid.UUID    `json:"client_id"`
 	Instrument string    `json:"instrument"`
 	Side       string    `json:"side"`
 	Type       string    `json:"type"`
@@ -20,13 +22,22 @@ type Order struct {
 }
 
 type OrderRequest struct {
-	ClientID   string    `json:"client_id"`
+	ClientID   uuid.UUID    `json:"client_id"`
 	Instrument string    `json:"instrument"`
 	Side       string    `json:"side"`
 	Type       string    `json:"type"`
 	Price      float64   `json:"price"`
 	Quantity   float64   `json:"quantity"`
 	Remaining  float64   `json:"remaining"`
+}
+
+type MatchOrder struct {
+	ID         uuid.UUID  `json:"id"`
+	Instrument string  `json:"instrument"`
+	Side       string  `json:"side"`
+	Type       string  `json:"type"`
+	Price      float64 `json:"price"`
+	Quantity   float64 `json:"quantity"`
 }
 
 func (o *OrderRequest) Validate() bool {
@@ -36,7 +47,7 @@ func (o *OrderRequest) Validate() bool {
 	oside := strings.ToLower(o.Side)
 	otype := strings.ToLower(o.Type)
 
-	if o.ClientID == "" || o.Instrument == "" {
+	if o.ClientID == uuid.Nil || o.Instrument == "" {
 		return false
 	}
 

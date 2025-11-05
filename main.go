@@ -1,16 +1,12 @@
 package main
 
 import (
-	"github.com/dis70rt/TradeOrders/internals/database"
-	"github.com/dis70rt/TradeOrders/internals/routes"
+	"fmt"
+
+	"github.com/IBM/sarama"
+	"github.com/dis70rt/TradeOrders/kafka"
 )
 
 func main() {
-	db := database.ConnectPostgres()
-	defer db.Close()
-
-	rdb := database.ConnectRedis()
-	defer rdb.Close()
-
-	routes.SetupRoutes(db, rdb).Run(":8080")
+	
 }

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 
 	log "github.com/dis70rt/TradeOrders/internals/logger"
-
 	"github.com/google/uuid"
 )
 
@@ -15,8 +14,9 @@ type Repository struct {
 }
 
 type PrepareQuery struct {
-	insertOrder *sql.Stmt
-	getOrders  	*sql.Stmt
+	insertOrder  *sql.Stmt
+	getOrders  	 *sql.Stmt
+	updateOrders *sql.Stmt
 }
 
 func NewRepository(db *sql.DB) *Repository {
@@ -48,15 +48,23 @@ func NewPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
 		return nil, err
 	}
 
+	updateOrders, err := db.Prepare(`
+		UPDATE orders
+		SET 
+			remaining = $2,
+			status = $3,
+			updated_at = NOW()
+		WHERE id = $1
+	`)
+
 	return &PrepareQuery{
 		insertOrder: insert,
 		getOrders: 	getOrders,
+		updateOrders: updateOrders,
 	}, nil
 }
 
-func (repo *Repository) CreateOrder(ctx context.Context, order *OrderRequest) (string, error) {
-	orderID := uuid.NewString()
-
+func (repo *Repository) CreateOrder(ctx context.Context, orderID uuid.UUID, order *OrderRequest) (string, error) {
 	_, err := repo.queries.insertOrder.ExecContext(
 		ctx,
 		orderID,
@@ -69,7 +77,7 @@ func (repo *Repository) CreateOrder(ctx context.Context, order *OrderRequest) (s
 		order.Remaining,
 	)
 
-	return orderID, err
+	return orderID.String(), err
 }
 
 func (repo *Repository) GetOrders(ctx context.Context, limit, page int) ([]Order, error) {
@@ -102,4 +110,19 @@ func (repo *Repository) GetOrders(ctx context.Context, limit, page int) ([]Order
 	}
 
 	return orders, nil
+}
+
+func (repo *Repository) UpdateOrder(
+	ctx context.Context,
+	orderID uuid.UUID,
+	remaining float64,
+	status string,
+) error {
+	_, err := repo.queries.updateOrders.ExecContext(
+		ctx,
+		orderID,
+		remaining,
+		status,
+	)
+	return err
 }
