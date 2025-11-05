@@ -8,12 +8,29 @@ This project implements a scalable backend service for a real-time trade clearin
 
 The system is composed of four primary, containerized microservices that communicate via Kafka, ensuring loose coupling and scalability.
 
-<!-- Placeholder for a diagram -->
+```mermaid
+flowchart LR
+    A[Client HTTP POST /orders] -->|publish| B[ORDER_ACCEPTED Kafka Topic]
+
+    B -->|consume| C[Matching Service]
+    B -->|consume| D[Database Service]
+
+    C -->|publish trades| E[TRADE_EXECUTED Kafka Topic]
+
+    E -->|consume| D
+    E -->|consume| F[Stream Service WebSockets]
+
+    classDef hotpath fill:#4CAF50,stroke:#1B5E20,stroke-width:1px
+    classDef slowpath fill:#FF9800,stroke:#E65100,stroke-width:1px
+
+    C:::hotpath
+    D:::slowpath
+```
 
 * **API Service (`api`)**: The public-facing gateway. It handles HTTP order submissions (`POST /orders`), validates incoming data, checks for idempotency using Redis, and publishes valid orders to the `ORDER_ACCEPTED` Kafka topic. It also serves read-only queries for historical orders and trades (`GET /orders`, `GET /trades`).
 * **Matching Engine (`matching`)**: The core logic of the exchange. It consumes from the `ORDER_ACCEPTED` topic. For each instrument, a dedicated order book is maintained in memory. It performs price-time priority matching and publishes filled trades to the `TRADE_EXECUTED` Kafka topic.
 * **Database Service (`database`)**: The persistence layer. It consumes from both `ORDER_ACCEPTED` and `TRADE_EXECUTED` topics to write orders and trades to a PostgreSQL database. This service acts as a sink, ensuring the event log from Kafka is durably stored and queryable.
-* **Stream Service (`stream`)**: The real-time broadcasting service. It consumes from the `TRADE_EXECUTED` topic and pushes live trade data to all connected WebSocket clients, with optional filtering by instrument.
+* **Stream Service (`stream`)**: The real-time broadcasting service. It consumes from the `TRADE_EXECUTED` topic and pushes live trade data to all connected WebSocket clients.
 
 **Technology Choices:**
 
