@@ -33,6 +33,7 @@ type OrderRequest struct {
 
 type MatchOrder struct {
 	ID         uuid.UUID  `json:"id"`
+	ClientID   uuid.UUID    `json:"client_id"`
 	Instrument string  `json:"instrument"`
 	Side       string  `json:"side"`
 	Type       string  `json:"type"`

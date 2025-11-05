@@ -3,31 +3,31 @@ package orders
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
+	// "encoding/json"
 
 	log "github.com/dis70rt/TradeOrders/internals/logger"
-	"github.com/dis70rt/TradeOrders/kafka"
+	// "github.com/dis70rt/TradeOrders/kafka"
 	"github.com/google/uuid"
 )
 
 type Repository struct {
-	db *sql.DB
-	queries *PrepareQuery
-	producer *kafka.Producer
+	db       *sql.DB
+	queries  *PrepareQuery
+	// producer *kafka.Producer
 }
 
 type PrepareQuery struct {
 	insertOrder  *sql.Stmt
-	getOrders  	 *sql.Stmt
+	getOrders    *sql.Stmt
 	updateOrders *sql.Stmt
 }
 
-func NewRepository(db *sql.DB, producer *kafka.Producer) *Repository {
+func NewRepository(db *sql.DB) *Repository {
 	queries, err := NewPrepareQuery(db)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to prepare queries")
 	}
-	return &Repository{db: db, queries: queries, producer: producer}
+	return &Repository{db: db, queries: queries}
 }
 
 func NewPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
@@ -61,39 +61,39 @@ func NewPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
 	`)
 
 	return &PrepareQuery{
-		insertOrder: insert,
-		getOrders: 	getOrders,
+		insertOrder:  insert,
+		getOrders:    getOrders,
 		updateOrders: updateOrders,
 	}, nil
 }
 
-func (repo *Repository) CreateOrder(ctx context.Context, order *OrderRequest) (string, error) {
-	orderID := uuid.New()
+func (repo *Repository) CreateOrder(ctx context.Context, order *MatchOrder) (string, error) {
+	// orderID := uuid.New()
 	_, err := repo.queries.insertOrder.ExecContext(
 		ctx,
-		orderID,
+		order.ID,
 		order.ClientID,
 		order.Instrument,
 		order.Side,
 		order.Type,
 		order.Price,
 		order.Quantity,
-		order.Remaining,
+		order.Quantity,
 	)
 
-	matchOrder := MatchOrder{
-		ID: orderID,
-		Instrument: order.Instrument,
-		Side: order.Side,
-		Type: order.Type,
-		Price: order.Price,
-		Quantity: order.Quantity,
-	}
+	// matchOrder := MatchOrder{
+	// 	ID:         orderID,
+	// 	Instrument: order.Instrument,
+	// 	Side:       order.Side,
+	// 	Type:       order.Type,
+	// 	Price:      order.Price,
+	// 	Quantity:   order.Quantity,
+	// }
 
-	orderJSON, _ := json.Marshal(matchOrder) 
-	repo.producer.SendMessage("orders.inbound", order.Instrument, orderJSON)
+	// orderJSON, _ := json.Marshal(matchOrder)
+	// repo.producer.SendMessage("ORDER_ACCEPTED", order.Instrument, orderJSON)
 
-	return orderID.String(), err
+	return order.ID.String(), err
 }
 
 func (repo *Repository) GetOrders(ctx context.Context, limit, page int) ([]Order, error) {

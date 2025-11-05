@@ -14,6 +14,9 @@ func Init() {
 	log.SetFormatter(&logrus.TextFormatter{
 		FullTimestamp: true,
 		ForceColors:   true,
+		TimestampFormat:        "15:04:05.000",    
+		PadLevelText:           true,              
+		DisableLevelTruncation: true,
 	})
 }
 

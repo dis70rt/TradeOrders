@@ -28,11 +28,11 @@ func (s *Service) UpdateDatabase(ctx context.Context) {
 				return
 			}
 			s.repo.ApplyTrade(ctx, &trade)
-			log.Info("Trade saved to database")
+			log.Info("Trade applied to database")
 		},
 	}
 
-	consumer := kafka.NewConsumer("trades.out", "persistence-trades", handler)
+	consumer := kafka.NewConsumer("TRADE_EXECUTED", "persistence-trades", handler)
 	defer consumer.Close()
 	consumer.Start()
 }

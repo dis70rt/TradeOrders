@@ -1,13 +1,15 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
-	_ "github.com/lib/pq"
-	"github.com/joho/godotenv"
 	log "github.com/dis70rt/TradeOrders/internals/logger"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 func ConnectPostgres() (*sql.DB) {
@@ -28,8 +30,16 @@ func ConnectPostgres() (*sql.DB) {
 		log.WithError(err).Fatal("Failed to open database connection")
 		return nil
 	}
+
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(30 * time.Minute)
+    db.SetConnMaxIdleTime(5 * time.Minute)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
 	
-	if err := db.Ping(); err != nil {
+	if err := db.PingContext(ctx); err != nil {
 		log.WithError(err).Fatal("Failed to connect to the database")
 		return nil
 	}

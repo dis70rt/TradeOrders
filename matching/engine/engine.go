@@ -15,7 +15,7 @@ import (
 type Engine struct {
 	OrderChannels map[string]chan *orders.MatchOrder
 	TradeChannels chan *trades.Trade
-	mutex sync.RWMutex
+	mutex         sync.RWMutex
 }
 
 func (engine *Engine) getOrderChannel(instrument string) chan *orders.MatchOrder {
@@ -31,17 +31,17 @@ func (engine *Engine) getOrderChannel(instrument string) chan *orders.MatchOrder
 	defer engine.mutex.Unlock()
 
 	if ch, exists := engine.OrderChannels[instrument]; exists {
-        return ch
-    }
+		return ch
+	}
 
 	newCh := make(chan *orders.MatchOrder, 100)
 	engine.OrderChannels[instrument] = newCh
-	
+
 	go engine.runInstrumentProcessor(instrument, newCh)
 	return newCh
 }
 
-func (engine *Engine) runInstrumentProcessor(instrument string, orderChan <- chan *orders.MatchOrder)  {
+func (engine *Engine) runInstrumentProcessor(instrument string, orderChan <-chan *orders.MatchOrder) {
 	book := orderbook.NewOrderBook(instrument)
 	book.TradeOut = engine.TradeChannels
 
@@ -52,7 +52,6 @@ func (engine *Engine) runInstrumentProcessor(instrument string, orderChan <- cha
 		}
 	}
 }
-
 
 func StartMatchingEngine() {
 	producer := kafka.NewProducer()
@@ -81,7 +80,7 @@ func StartMatchingEngine() {
 	}
 
 	log.Info("Matching engine dispatcher started. Waiting for orders...")
-	consumer := kafka.NewConsumer("orders.inbound", "matching-engine-group", handler)
+	consumer := kafka.NewConsumer("ORDER_ACCEPTED", "matching-engine-group", handler)
 	defer consumer.Close()
 	consumer.Start()
 }

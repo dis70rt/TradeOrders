@@ -42,7 +42,7 @@ func NewConsumer(topic, groupID string, handler ConsumerHandler) *Consumer {
 	cfg := sarama.NewConfig()
 	cfg.Version = sarama.V2_5_0_0
 	cfg.Consumer.Offsets.Initial = sarama.OffsetNewest
-	cfg.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+	cfg.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 
 	group, err := sarama.NewConsumerGroup([]string{broker}, groupID, cfg)
 	if err != nil {
