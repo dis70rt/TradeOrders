@@ -10,7 +10,8 @@ import (
 )
 
 func SetupRoutes(ctx context.Context, db *sql.DB, rdb *redis.Client) *gin.Engine {
-	router := gin.Default()
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
 
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
