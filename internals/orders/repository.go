@@ -20,6 +20,7 @@ type PrepareQuery struct {
 	insertOrder  *sql.Stmt
 	getOrders    *sql.Stmt
 	updateOrders *sql.Stmt
+	getByID      *sql.Stmt
 }
 
 func NewRepository(db *sql.DB) *Repository {
@@ -59,11 +60,24 @@ func NewPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
 			updated_at = NOW()
 		WHERE id = $1
 	`)
+	if err != nil {
+		return nil, err
+	}
+
+	getByID, err := db.Prepare(`
+        SELECT id, client_id, instrument, side, type, price, quantity, remaining, status, created_at, updated_at
+        FROM orders
+        WHERE id = $1
+    `)
+    if err != nil {
+        return nil, err
+    }
 
 	return &PrepareQuery{
 		insertOrder:  insert,
 		getOrders:    getOrders,
 		updateOrders: updateOrders,
+		getByID:      getByID,
 	}, nil
 }
 
@@ -141,4 +155,28 @@ func (repo *Repository) UpdateOrder(
 		status,
 	)
 	return err
+}
+
+func (repo *Repository) GetOrderByID(ctx context.Context, orderID uuid.UUID) (*Order, error) {
+    row := repo.queries.getByID.QueryRowContext(ctx, orderID)
+
+    var order Order
+    err := row.Scan(
+        &order.ID,
+        &order.ClientID,
+        &order.Instrument,
+        &order.Side,
+        &order.Type,
+        &order.Price,
+        &order.Quantity,
+        &order.Remaining,
+        &order.Status,
+        &order.CreatedAt,
+        &order.UpdatedAt,
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    return &order, nil
 }

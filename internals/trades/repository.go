@@ -14,6 +14,7 @@ type Repository struct {
 
 type PrepareQuery struct {
 	insertTrade *sql.Stmt
+    getTrades   *sql.Stmt
 }
 
 func NewRepository(db *sql.DB) *Repository {
@@ -37,8 +38,19 @@ func newPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
 		return nil, err
 	}
 
+    get, err := db.Prepare(`
+        SELECT id, buy_order_id, sell_order_id, instrument, price, quantity, executed_at
+        FROM trades
+        ORDER BY executed_at DESC
+        LIMIT $1 OFFSET $2
+    `)
+    if err != nil {
+        return nil, err
+    }
+
 	return &PrepareQuery{
 		insertTrade: insert,
+        getTrades:   get,
 	}, nil
 }
 
@@ -96,3 +108,28 @@ func (r *Repository) ApplyTrade(
     return tx.Commit()
 }
 
+func (r *Repository) GetTrades(ctx context.Context, limit, offset int) ([]Trade, error) {
+    rows, err := r.queries.getTrades.QueryContext(ctx, limit, offset)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    trades := make([]Trade, 0, limit)
+    for rows.Next() {
+        var trade Trade
+        if err := rows.Scan(
+            &trade.ID,
+            &trade.BuyOrderID,
+            &trade.SellOrderID,
+            &trade.Instrument,
+            &trade.Price,
+            &trade.Quantity,
+            &trade.ExecutedAt,
+        ); err != nil {
+            return nil, err
+        }
+        trades = append(trades, trade)
+    }
+    return trades, rows.Err()
+}

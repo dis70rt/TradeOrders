@@ -1,6 +1,8 @@
 package orders
 
 import (
+	"database/sql"
+	"errors"
 	"net/http"
 
 	log "github.com/dis70rt/TradeOrders/internals/logger"
@@ -47,4 +49,22 @@ func (h *Handler) GetOrders(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, orders)
+}
+
+func (h *Handler) GetOrderByID(c *gin.Context) {
+    orderID := c.Param("id")
+
+    ctx := c.Request.Context()
+    order, err := h.service.GetOrderByID(ctx, orderID)
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
+            return
+        }
+        log.WithError(err).Errorf("Failed to retrieve order with id %s", orderID)
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve order"})
+        return
+    }
+
+    c.JSON(http.StatusOK, order)
 }

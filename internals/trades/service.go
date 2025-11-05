@@ -19,6 +19,11 @@ func NewService(repo *Repository) *Service {
 	}
 }
 
+func (s *Service) GetTrades(ctx context.Context, limit, page int) ([]Trade, error) {
+    offset := (page - 1) * limit
+    return s.repo.GetTrades(ctx, limit, offset)
+}
+
 func (s *Service) UpdateDatabase(ctx context.Context) {
 	handler := kafka.ConsumerHandler{
 		Process: func(msg *sarama.ConsumerMessage) {

@@ -45,3 +45,11 @@ func (s *Service) CreateOrder(ctx context.Context, order *OrderRequest) (string,
 func (s *Service) GetOrders(ctx context.Context, limit, page int) ([]Order, error) {
 	return s.repo.GetOrders(ctx, limit, page)
 }
+
+func (s *Service) GetOrderByID(ctx context.Context, orderID string) (*Order, error) {
+    id, err := uuid.Parse(orderID)
+    if err != nil {
+        return nil, errors.New("invalid order ID format")
+    }
+    return s.repo.GetOrderByID(ctx, id)
+}
