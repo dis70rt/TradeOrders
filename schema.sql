@@ -30,7 +30,7 @@ CREATE TABLE order_queue (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE INDEX idx_orders_symbol_side_price ON orders (symbol, side, price DESC);
+CREATE INDEX idx_orders_instrument_side_price ON orders (instrument, side, price DESC);
 CREATE INDEX idx_orders_status ON orders (status);
 CREATE INDEX idx_trades_buy_order ON trades (buy_order_id);
 CREATE INDEX idx_trades_sell_order ON trades (sell_order_id);
@@ -40,3 +40,22 @@ CREATE INDEX idx_order_queue_order_id ON order_queue (order_id);
 -- DROP TABLE orders CASCADE;
 -- DROP TABLE trades CASCADE;
 -- DROP TABLE order_queue CASCADE;
+
+CREATE OR REPLACE FUNCTION set_order_status()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.remaining = NEW.quantity THEN
+        NEW.status := 'NEW';
+    ELSIF NEW.remaining = 0 THEN
+        NEW.status := 'FILLED';
+    ELSE
+        NEW.status := 'PARTIALLY_FILLED';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_order_status
+BEFORE INSERT OR UPDATE ON orders
+FOR EACH ROW
+EXECUTE FUNCTION set_order_status();

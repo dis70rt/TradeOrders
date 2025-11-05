@@ -1,6 +1,11 @@
 package trades
 
-import "database/sql"
+import (
+	"context"
+	"database/sql"
+
+	log "github.com/dis70rt/TradeOrders/internals/logger"
+)
 
 type Repository struct {
 	db      *sql.DB
@@ -11,7 +16,18 @@ type PrepareQuery struct {
 	insertTrade *sql.Stmt
 }
 
-func NewPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
+func NewRepository(db *sql.DB) *Repository {
+	queries, err := newPrepareQuery(db)
+	if err != nil {
+		log.WithError(err).Fatal("Failed to prepare queries")
+	}
+	return &Repository{
+		db: db,
+		queries: queries,
+	}
+}
+
+func newPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
 	insert, err := db.Prepare(`
 		INSERT INTO trades (
 			id, buy_order_id, sell_order_id, instrument, price, quantity, executed_at
@@ -33,3 +49,50 @@ func (r *Repository) InsertTrade(trade *Trade) error {
 	)
 	return err
 }
+
+func (r *Repository) ApplyTrade(
+    ctx context.Context,
+    trade *Trade,
+) error {
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
+
+    if _, err := tx.ExecContext(
+        ctx,
+        `UPDATE orders SET remaining = remaining - $1, updated_at=NOW()
+         WHERE id=$2`,
+        trade.Quantity, trade.BuyOrderID,
+    ); err != nil {
+        return err
+    }
+
+    if _, err := tx.ExecContext(
+        ctx,
+        `UPDATE orders SET remaining = remaining - $1, updated_at=NOW()
+         WHERE id=$2`,
+        trade.Quantity, trade.SellOrderID,
+    ); err != nil {
+        return err
+    }
+
+    if _, err := tx.ExecContext(
+        ctx,
+        `INSERT INTO trades (id, buy_order_id, sell_order_id, instrument, price, quantity, executed_at)
+         VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7,NOW()))`,
+        trade.ID,
+        trade.BuyOrderID,
+        trade.SellOrderID,
+        trade.Instrument,
+        trade.Price,
+        trade.Quantity,
+        trade.ExecutedAt,
+    ); err != nil {
+        return err
+    }
+
+    return tx.Commit()
+}
+

@@ -3,14 +3,17 @@ package orders
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	log "github.com/dis70rt/TradeOrders/internals/logger"
+	"github.com/dis70rt/TradeOrders/kafka"
 	"github.com/google/uuid"
 )
 
 type Repository struct {
 	db *sql.DB
 	queries *PrepareQuery
+	producer *kafka.Producer
 }
 
 type PrepareQuery struct {
@@ -19,12 +22,12 @@ type PrepareQuery struct {
 	updateOrders *sql.Stmt
 }
 
-func NewRepository(db *sql.DB) *Repository {
+func NewRepository(db *sql.DB, producer *kafka.Producer) *Repository {
 	queries, err := NewPrepareQuery(db)
 	if err != nil {
 		log.WithError(err).Fatal("Failed to prepare queries")
 	}
-	return &Repository{db: db, queries: queries}
+	return &Repository{db: db, queries: queries, producer: producer}
 }
 
 func NewPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
@@ -64,7 +67,8 @@ func NewPrepareQuery(db *sql.DB) (*PrepareQuery, error) {
 	}, nil
 }
 
-func (repo *Repository) CreateOrder(ctx context.Context, orderID uuid.UUID, order *OrderRequest) (string, error) {
+func (repo *Repository) CreateOrder(ctx context.Context, order *OrderRequest) (string, error) {
+	orderID := uuid.New()
 	_, err := repo.queries.insertOrder.ExecContext(
 		ctx,
 		orderID,
@@ -76,6 +80,18 @@ func (repo *Repository) CreateOrder(ctx context.Context, orderID uuid.UUID, orde
 		order.Quantity,
 		order.Remaining,
 	)
+
+	matchOrder := MatchOrder{
+		ID: orderID,
+		Instrument: order.Instrument,
+		Side: order.Side,
+		Type: order.Type,
+		Price: order.Price,
+		Quantity: order.Quantity,
+	}
+
+	orderJSON, _ := json.Marshal(matchOrder) 
+	repo.producer.SendMessage("orders.inbound", order.Instrument, orderJSON)
 
 	return orderID.String(), err
 }

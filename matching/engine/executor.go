@@ -30,7 +30,8 @@ func (te *TradeExecutor) Start() {
                 continue
             }
 
-			te.Producer.SendMessage("trades", trade.Instrument, tradeJSON)
+			log.Infof("Publishing trade: %+v", trade)
+			te.Producer.SendMessage("trades.out", trade.Instrument, tradeJSON)
 		}
 	}()
 }

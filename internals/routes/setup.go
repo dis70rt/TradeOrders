@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func SetupRoutes(db *sql.DB, rdb *redis.Client) *gin.Engine {
+func SetupRoutes(ctx context.Context, db *sql.DB, rdb *redis.Client) *gin.Engine {
 	router := gin.Default()
 
 	router.GET("/health", func(c *gin.Context) {
@@ -17,7 +18,7 @@ func SetupRoutes(db *sql.DB, rdb *redis.Client) *gin.Engine {
 
 	routerGroup := router.Group("/api/v1")
 	{
-		RegisterOrderRoutes(db, rdb, routerGroup)
+		RegisterOrderRoutes(ctx, db, rdb, routerGroup)
 	}
 	return router
 }

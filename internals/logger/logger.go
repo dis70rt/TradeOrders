@@ -8,7 +8,7 @@ import (
 
 var log = logrus.New()
 
-func init() {
+func Init() {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(logrus.InfoLevel)
 	log.SetFormatter(&logrus.TextFormatter{
@@ -23,4 +23,8 @@ func Info(msg string) {
 
 func WithError(err error) *logrus.Entry {
 	return log.WithError(err)
+}
+
+func Infof(format string, args ...interface{}) {
+	log.Infof(format, args...)
 }

@@ -56,7 +56,7 @@ func (engine *Engine) runInstrumentProcessor(instrument string, orderChan <- cha
 
 func StartMatchingEngine() {
 	producer := kafka.NewProducer()
-	defer producer.Close()
+	// defer producer.Close()
 
 	engine := &Engine{
 		OrderChannels: make(map[string]chan *orders.MatchOrder),
@@ -74,13 +74,14 @@ func StartMatchingEngine() {
 				return
 			}
 
+			log.Infof("Received order: %+v", order)
 			orderCh := engine.getOrderChannel(order.Instrument)
 			orderCh <- &order
 		},
 	}
 
 	log.Info("Matching engine dispatcher started. Waiting for orders...")
-	consumer := kafka.NewConsumer("orders", "matching-engine-group", handler)
+	consumer := kafka.NewConsumer("orders.inbound", "matching-engine-group", handler)
 	defer consumer.Close()
 	consumer.Start()
 }

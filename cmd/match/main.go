@@ -5,7 +5,8 @@ import (
     "github.com/dis70rt/TradeOrders/matching/engine"
 )
 
-func StartMatchingService() {
+func main() {
+    log.Init()
     log.Info("Starting matching service...")
     engine.StartMatchingEngine()
 }

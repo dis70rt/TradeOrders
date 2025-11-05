@@ -1,27 +1,38 @@
 package trades
 
 import (
+	"context"
 	"encoding/json"
 
+	"github.com/IBM/sarama"
+	log "github.com/dis70rt/TradeOrders/internals/logger"
 	"github.com/dis70rt/TradeOrders/kafka"
 )
 
 type Service struct {
-	producer *kafka.Producer
+	repo *Repository
 }
 
-func NewService(producer *kafka.Producer) *Service {
+func NewService(repo *Repository) *Service {
 	return &Service{
-		producer: producer,
+		repo: repo,
 	}
 }
 
-func (s *Service) Exec(trade *Trade) error {
-	tradeJSON, err := json.Marshal(trade)
-	if err != nil {
-		return err
+func (s *Service) UpdateDatabase(ctx context.Context) {
+	handler := kafka.ConsumerHandler{
+		Process: func(msg *sarama.ConsumerMessage) {
+			var trade Trade
+			if err := json.Unmarshal(msg.Value, &trade); err != nil {
+				log.WithError(err).Error("failed to unmarshal order")
+				return
+			}
+			s.repo.ApplyTrade(ctx, &trade)
+			log.Info("Trade saved to database")
+		},
 	}
 
-	s.producer.SendMessage("trades", trade.Instrument, tradeJSON)
-	return nil
+	consumer := kafka.NewConsumer("trades.out", "persistence-trades", handler)
+	defer consumer.Close()
+	consumer.Start()
 }
