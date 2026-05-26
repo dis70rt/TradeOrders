@@ -47,7 +47,7 @@ func (engine *Engine) runInstrumentProcessor(instrument string, orderChan <-chan
 
 	for order := range orderChan {
 		book.TryMatch(order)
-		if order.Quantity > 0 {
+		if order.Quantity > 0 && order.Type == "LIMIT" {
 			book.AddOrder(order)
 		}
 	}
