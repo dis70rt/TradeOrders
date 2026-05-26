@@ -8,7 +8,7 @@ services:
     networks:
       - trade-orders
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - /data/tradeorders/pgdata:/var/lib/postgresql/data
       - ./schema.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
@@ -26,7 +26,7 @@ services:
     networks:
       - trade-orders
     volumes:
-      - redisdata:/data
+      - /data/tradeorders/redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -36,15 +36,22 @@ services:
   zookeeper:
     image: zookeeper:3.9
     container_name: zookeeper
+    restart: unless-stopped
     networks:
       - trade-orders
+    healthcheck:
+      test: ["CMD-SHELL", "echo srvr | nc localhost 2181 | grep Zookeeper"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     container_name: kafka
     user: "root"
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -59,7 +66,7 @@ services:
     networks:
       - trade-orders
     volumes:
-      - kafka:/var/lib/kafka/data
+      - /data/tradeorders/kafka:/var/lib/kafka/data
     healthcheck:
       test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
       interval: 15s
@@ -142,8 +149,3 @@ services:
 networks:
   trade-orders:
     driver: bridge
-  
-volumes:
-  pgdata:
-  redisdata:
-  kafka:
