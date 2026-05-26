@@ -2,7 +2,10 @@ package engine
 
 import (
 	"encoding/json"
+	"os"
+	"os/signal"
 	"sync"
+	"syscall"
 
 	"github.com/IBM/sarama"
 	log "github.com/dis70rt/TradeOrders/internals/logger"
@@ -53,9 +56,16 @@ func (engine *Engine) runInstrumentProcessor(instrument string, orderChan <-chan
 	}
 }
 
+func (engine *Engine) drainOrderChannels() {
+	engine.mutex.Lock()
+	defer engine.mutex.Unlock()
+	for _, ch := range engine.OrderChannels {
+		close(ch)
+	}
+}
+
 func StartMatchingEngine() {
 	producer := kafka.NewProducer()
-	// defer producer.Close()
 
 	engine := &Engine{
 		OrderChannels: make(map[string]chan *orders.MatchOrder),
@@ -82,6 +92,18 @@ func StartMatchingEngine() {
 
 	log.Info("Matching engine dispatcher started. Waiting for orders...")
 	consumer := kafka.NewConsumer("ORDER_ACCEPTED", "matching-engine-group", handler)
-	defer consumer.Close()
-	consumer.Start()
+
+	// Block until shutdown signal
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, syscall.SIGINT, syscall.SIGTERM)
+
+	go consumer.Start()
+	<-sigc
+
+	log.Info("Shutting down matching engine...")
+	consumer.Close()
+	engine.drainOrderChannels()
+	close(engine.TradeChannels)
+	tradeExec.Stop()
+	log.Info("Matching engine stopped cleanly.")
 }
