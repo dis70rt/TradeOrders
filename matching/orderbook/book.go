@@ -2,7 +2,6 @@ package orderbook
 
 import (
 	"container/heap"
-	"sync"
 
 	"github.com/dis70rt/TradeOrders/internals/orders"
 	"github.com/dis70rt/TradeOrders/internals/trades"
@@ -10,11 +9,9 @@ import (
 
 type OrderBookManager struct {
     Books map[string]*OrderBook
-    mu    sync.Mutex
 }
 
 type OrderBook struct {
-	mu sync.Mutex
 	Instrument	string
 	BuyOrders 	*OrderHeap
 	SellOrders 	*OrderHeap
@@ -43,8 +40,6 @@ func NewOrderBook(instrument string) *OrderBook {
 }
 
 func (m *OrderBookManager) GetOrCreate(instrument string) *OrderBook {
-    m.mu.Lock()
-    defer m.mu.Unlock()
     ob, ok := m.Books[instrument]
     if !ok {
         ob = NewOrderBook(instrument)
@@ -54,9 +49,6 @@ func (m *OrderBookManager) GetOrCreate(instrument string) *OrderBook {
 }
 
 func (ob *OrderBook) AddOrder(order *orders.MatchOrder) {
-	ob.mu.Lock()
-	defer ob.mu.Unlock()
-
 	if order.Side == "BUY" {
 		heap.Push(ob.BuyOrders, order)
 	} else {

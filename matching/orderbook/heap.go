@@ -5,9 +5,8 @@ import (
 )
 
 type OrderHeap struct {
-	data []*orders.MatchOrder
-	Price  int
-	IsBuy  bool
+	data  []*orders.MatchOrder
+	IsBuy bool
 }
 
 func (h *OrderHeap) Len() int { return len(h.data) }
