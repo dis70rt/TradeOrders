@@ -19,15 +19,19 @@ func NewConsumerService(repo *Repository) *ConsumerService {
 
 func (s *ConsumerService) InsertOrderDatabase(ctx context.Context) {
 	handler := kafka.ConsumerHandler{
-		Process: func(msg *sarama.ConsumerMessage) {
+		Process: func(msg *sarama.ConsumerMessage) error {
 			var order MatchOrder
 			if err := json.Unmarshal(msg.Value, &order); err != nil {
 				log.WithError(err).Error("failed to unmarshal order")
-				return
+				return err
 			}
 
-			s.repo.CreateOrder(ctx, &order)
+			if _, err := s.repo.CreateOrder(ctx, &order); err != nil {
+				log.WithError(err).Error("failed to insert order into database")
+				return err
+			}
 			log.Info("Order inserted into database")
+			return nil
 		},
 	}
 

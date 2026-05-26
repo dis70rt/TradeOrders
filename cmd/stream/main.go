@@ -21,13 +21,14 @@ func main() {
     go hub.Run()
 
     handler := kafka.ConsumerHandler{
-        Process: func(msg *sarama.ConsumerMessage) {
+        Process: func(msg *sarama.ConsumerMessage) error {
             var t trades.Trade
             if err := json.Unmarshal(msg.Value, &t); err != nil {
                 log.WithError(err).Error("stream: unmarshal trade")
-                return
+                return err
             }
             hub.Broadcast(streaming.Broadcast{Instrument: t.Instrument, Data: msg.Value})
+            return nil
         },
     }
 

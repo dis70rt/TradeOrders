@@ -17,7 +17,7 @@ type Consumer struct {
 }
 
 type ConsumerHandler struct {
-	Process func(message *sarama.ConsumerMessage)
+	Process func(message *sarama.ConsumerMessage) error
 }
 
 func (ConsumerHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
@@ -26,7 +26,13 @@ func (ConsumerHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil
 func (h ConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
 		if h.Process != nil {
-			h.Process(msg)
+			if err := h.Process(msg); err != nil {
+				log.WithError(err).Errorf(
+					"failed to process message topic=%s partition=%d offset=%d",
+					msg.Topic, msg.Partition, msg.Offset,
+				)
+				continue
+			}
 		}
 		session.MarkMessage(msg, "")
 	}
@@ -46,7 +52,7 @@ func NewConsumer(topic, groupID string, handler ConsumerHandler) *Consumer {
 
 	group, err := sarama.NewConsumerGroup([]string{broker}, groupID, cfg)
 	if err != nil {
-		log.WithError(err).Error("kafka consumer init failed")
+		log.WithError(err).Fatal("kafka consumer init failed")
 	}
 
 	return &Consumer{
@@ -57,15 +63,8 @@ func NewConsumer(topic, groupID string, handler ConsumerHandler) *Consumer {
 }
 
 func (c *Consumer) Start() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
-		<-sig
-		cancel()
-	}()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	for {
 		if err := c.group.Consume(ctx, []string{c.topic}, c.handler); err != nil {

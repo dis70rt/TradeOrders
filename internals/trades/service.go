@@ -26,14 +26,18 @@ func (s *Service) GetTrades(ctx context.Context, limit, page int) ([]Trade, erro
 
 func (s *Service) UpdateDatabase(ctx context.Context) {
 	handler := kafka.ConsumerHandler{
-		Process: func(msg *sarama.ConsumerMessage) {
+		Process: func(msg *sarama.ConsumerMessage) error {
 			var trade Trade
 			if err := json.Unmarshal(msg.Value, &trade); err != nil {
-				log.WithError(err).Error("failed to unmarshal order")
-				return
+				log.WithError(err).Error("failed to unmarshal trade")
+				return err
 			}
-			s.repo.ApplyTrade(ctx, &trade)
+			if err := s.repo.ApplyTrade(ctx, &trade); err != nil {
+				log.WithError(err).Error("failed to apply trade to database")
+				return err
+			}
 			log.Info("Trade applied to database")
+			return nil
 		},
 	}
 
