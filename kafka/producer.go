@@ -20,13 +20,26 @@ func NewProducer() *Producer {
 	cfg := sarama.NewConfig()
 	cfg.Producer.RequiredAcks = sarama.WaitForAll
 	cfg.Producer.Partitioner = sarama.NewHashPartitioner
-	cfg.Producer.Return.Successes = false
+	cfg.Producer.Return.Successes = true
 	cfg.Producer.Return.Errors = true
+	cfg.Producer.Idempotent = true
+	cfg.Net.MaxOpenRequests = 1
 
 	p, err := sarama.NewAsyncProducer(brokers, cfg)
 	if err != nil {
-		log.WithError(err).Error("kafka producer init failed")
+		log.WithError(err).Fatal("kafka producer init failed")
 	}
+
+	// Drain successes and errors to prevent channel backpressure
+	go func() {
+		for range p.Successes() {
+		}
+	}()
+	go func() {
+		for err := range p.Errors() {
+			log.WithError(err).Error("kafka async produce error")
+		}
+	}()
 
 	return &Producer{async: p}
 }
@@ -34,7 +47,7 @@ func NewProducer() *Producer {
 func (p *Producer) SendMessage(topic string, key string, msg []byte) {
 	p.async.Input() <- &sarama.ProducerMessage{
 		Topic: topic,
-		Key: sarama.StringEncoder(key),
+		Key:   sarama.StringEncoder(key),
 		Value: sarama.ByteEncoder(msg),
 	}
 }
