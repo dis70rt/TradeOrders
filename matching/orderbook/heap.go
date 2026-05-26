@@ -14,9 +14,15 @@ func (h *OrderHeap) Len() int { return len(h.data) }
 
 func (h *OrderHeap) Less(i, j int) bool {
 	if h.IsBuy {
-		return h.data[i].Price > h.data[j].Price
+		if h.data[i].Price != h.data[j].Price {
+			return h.data[i].Price > h.data[j].Price
+		}
+		return h.data[i].Timestamp < h.data[j].Timestamp
 	}
-	return h.data[i].Price < h.data[j].Price 
+	if h.data[i].Price != h.data[j].Price {
+		return h.data[i].Price < h.data[j].Price
+	}
+	return h.data[i].Timestamp < h.data[j].Timestamp
 }
 
 func (h *OrderHeap) Swap(i, j int) {

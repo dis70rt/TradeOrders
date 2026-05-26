@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"time"
 
 	log "github.com/dis70rt/TradeOrders/internals/logger"
 	"github.com/dis70rt/TradeOrders/kafka"
@@ -33,6 +34,7 @@ func (s *Service) CreateOrder(ctx context.Context, order *OrderRequest) (string,
 		Type:       order.Type,
 		Price:      order.Price,
 		Quantity:   order.Quantity,
+		Timestamp:  time.Now().UnixNano(),
 	}
 
 	orderJSON, _ := json.Marshal(matchOrder)

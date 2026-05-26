@@ -39,6 +39,7 @@ type MatchOrder struct {
 	Type       string  `json:"type"`
 	Price      float64 `json:"price"`
 	Quantity   float64 `json:"quantity"`
+	Timestamp  int64   `json:"timestamp"`
 }
 
 func (o *OrderRequest) Validate() bool {
